@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import VisualizationLayout from "../components/VisualizationLayout";
 
 interface StepState {
   currentIndex: number;
@@ -8,25 +9,132 @@ interface StepState {
   checking: number | null;
 }
 
-const INITIAL_NUMS = [2, 7, 11, 15];
-const INITIAL_TARGET = 9;
+const INPUT_STYLE: React.CSSProperties = {
+  background: "#1e293b",
+  border: "1px solid #303030",
+  color: "#e2e8f0",
+  borderRadius: 6,
+  padding: "4px 8px",
+  fontFamily: "monospace",
+  fontSize: 13,
+  outline: "none",
+  width: 200,
+};
+
+const LABEL_STYLE: React.CSSProperties = {
+  color: "#64748b",
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: "uppercase" as const,
+  letterSpacing: 1,
+  marginRight: 8,
+};
+
+const ERROR_STYLE: React.CSSProperties = {
+  color: "#ef4444",
+  fontSize: 11,
+  marginTop: 4,
+};
+
+function hasTwoSumSolution(nums: number[], target: number): boolean {
+  const seen = new Set<number>();
+  for (const n of nums) {
+    if (seen.has(target - n)) return true;
+    seen.add(n);
+  }
+  return false;
+}
 
 export default function TwoSumVisualization() {
-  const [nums] = useState(INITIAL_NUMS);
-  const [target] = useState(INITIAL_TARGET);
+  const [numsInput, setNumsInput] = useState("2, 7, 11, 15");
+  const [targetInput, setTargetInput] = useState("9");
+  const [inputError, setInputError] = useState<string | null>(null);
+  const [nums, setNums] = useState([2, 7, 11, 15]);
+  const [target, setTarget] = useState(9);
   const [stepIndex, setStepIndex] = useState(-1);
   const [isRunning, setIsRunning] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const stopRef = useRef(false);
+  const speedRef = useRef(speed);
+  useEffect(() => {
+    speedRef.current = speed;
+  }, [speed]);
 
-  const generateSteps = useCallback((): StepState[] => {
-    const steps: StepState[] = [];
+  const handleNumsChange = useCallback(
+    (value: string) => {
+      setNumsInput(value);
+      const parts = value.split(",").map((s) => s.trim());
+      if (parts.some((p) => p === "" || isNaN(Number(p)) || !Number.isInteger(Number(p)))) {
+        setInputError("Each element must be a valid integer.");
+        return;
+      }
+      const parsed = parts.map(Number);
+      if (parsed.length < 2 || parsed.length > 20) {
+        setInputError("Array must have between 2 and 20 elements.");
+        return;
+      }
+      // Parse current target to validate pair existence
+      const t = Number(targetInput);
+      if (isNaN(t) || !Number.isInteger(t)) {
+        setInputError("Target must be a valid integer.");
+        return;
+      }
+      if (!hasTwoSumSolution(parsed, t)) {
+        setInputError("No valid two-sum pair exists for this input and target.");
+        return;
+      }
+      setInputError(null);
+      setNums(parsed);
+      setTarget(t);
+      stopRef.current = true;
+      setIsRunning(false);
+      setStepIndex(-1);
+    },
+    [targetInput],
+  );
+
+  const handleTargetChange = useCallback(
+    (value: string) => {
+      setTargetInput(value);
+      const t = Number(value);
+      if (value.trim() === "" || isNaN(t) || !Number.isInteger(t)) {
+        setInputError("Target must be a valid integer.");
+        return;
+      }
+      // Parse current nums to validate pair existence
+      const parts = numsInput.split(",").map((s) => s.trim());
+      if (parts.some((p) => p === "" || isNaN(Number(p)) || !Number.isInteger(Number(p)))) {
+        setInputError("Each element must be a valid integer.");
+        return;
+      }
+      const parsed = parts.map(Number);
+      if (parsed.length < 2 || parsed.length > 20) {
+        setInputError("Array must have between 2 and 20 elements.");
+        return;
+      }
+      if (!hasTwoSumSolution(parsed, t)) {
+        setInputError("No valid two-sum pair exists for this input and target.");
+        return;
+      }
+      setInputError(null);
+      setNums(parsed);
+      setTarget(t);
+      stopRef.current = true;
+      setIsRunning(false);
+      setStepIndex(-1);
+    },
+    [numsInput],
+  );
+
+  const steps = useMemo((): StepState[] => {
+    const result: StepState[] = [];
     const hashMap: Record<number, number> = {};
 
     for (let i = 0; i < nums.length; i++) {
       const complement = target - nums[i];
 
-      // Step: check if complement exists in hash
       if (complement in hashMap) {
-        steps.push({
+        result.push({
           currentIndex: i,
           hashMap: { ...hashMap },
           found: [hashMap[complement], i],
@@ -36,8 +144,7 @@ export default function TwoSumVisualization() {
         break;
       }
 
-      // Step: show checking
-      steps.push({
+      result.push({
         currentIndex: i,
         hashMap: { ...hashMap },
         found: null,
@@ -45,21 +152,18 @@ export default function TwoSumVisualization() {
         checking: complement,
       });
 
-      // Step: add to hash
       hashMap[nums[i]] = i;
-      steps.push({
+      result.push({
         currentIndex: i,
         hashMap: { ...hashMap },
         found: null,
-        message: `Store ${nums[i]} -> index ${i} in hash map.`,
+        message: `Store ${nums[i]} → index ${i} in hash map.`,
         checking: null,
       });
     }
 
-    return steps;
+    return result;
   }, [nums, target]);
-
-  const steps = generateSteps();
 
   const currentState: StepState =
     stepIndex >= 0 && stepIndex < steps.length
@@ -68,189 +172,175 @@ export default function TwoSumVisualization() {
           currentIndex: -1,
           hashMap: {},
           found: null,
-          message: 'Press "Step" to walk through the algorithm, or "Play" to animate.',
+          message: 'Press "Play" to animate the algorithm.',
           checking: null,
         };
 
-  const stepForward = () => {
-    if (stepIndex < steps.length - 1) {
-      setStepIndex((prev) => prev + 1);
-    }
-  };
+  const isDone = stepIndex >= 0 && stepIndex === steps.length - 1;
+  const logEntries = steps.slice(0, stepIndex + 1).map((s) => s.message);
 
-  const reset = () => {
-    setStepIndex(-1);
-    setIsRunning(false);
-  };
-
-  const play = async () => {
+  const play = useCallback(async () => {
+    stopRef.current = false;
     setIsRunning(true);
-    for (let i = stepIndex < 0 ? 0 : stepIndex + 1; i < steps.length; i++) {
-      await new Promise((r) => setTimeout(r, 800));
+    const start = stepIndex < 0 ? 0 : stepIndex + 1;
+    for (let i = start; i < steps.length; i++) {
+      if (stopRef.current) break;
+      await new Promise((r) => setTimeout(r, 800 / speedRef.current));
+      if (stopRef.current) break;
       setStepIndex(i);
     }
     setIsRunning(false);
-  };
+  }, [stepIndex, steps.length]);
 
-  const isDone = stepIndex >= 0 && stepIndex === steps.length - 1;
+  const stop = useCallback(() => {
+    stopRef.current = true;
+    setIsRunning(false);
+  }, []);
+
+  const reset = useCallback(() => {
+    stopRef.current = true;
+    setIsRunning(false);
+    setStepIndex(-1);
+  }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24, height: "100%" }}>
-      {/* Target info */}
-      <div style={{ textAlign: "center" }}>
-        <span style={{ color: "#94a3b8", fontSize: 14 }}>Target = </span>
-        <span style={{ color: "#f1fa8c", fontSize: 20, fontWeight: 700 }}>{target}</span>
-      </div>
-
-      {/* Array display */}
-      <div>
-        <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
-          Array
+    <VisualizationLayout
+      inputPanel={
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span style={LABEL_STYLE}>nums</span>
+              <input
+                style={INPUT_STYLE}
+                value={numsInput}
+                onChange={(e) => handleNumsChange(e.target.value)}
+                placeholder="e.g. 2, 7, 11, 15"
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <span style={LABEL_STYLE}>target</span>
+              <input
+                style={{ ...INPUT_STYLE, width: 80 }}
+                value={targetInput}
+                onChange={(e) => handleTargetChange(e.target.value)}
+                placeholder="e.g. 9"
+              />
+            </div>
+          </div>
+          {inputError && <div style={ERROR_STYLE}>{inputError}</div>}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {nums.map((num, i) => {
-            const isActive = currentState.currentIndex === i;
-            const isFound = currentState.found?.includes(i);
-            let bg = "#1e293b";
-            if (isFound) bg = "#166534";
-            else if (isActive) bg = "#1e40af";
+      }
+      onPlay={play}
+      onStop={stop}
+      onReset={reset}
+      isPlaying={isRunning}
+      isDone={isDone}
+      speed={speed}
+      onSpeedChange={setSpeed}
+      logEntries={logEntries}
+    >
+      {/* ── Visualization: Array + Hash Map ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 20, height: "100%" }}>
+        {/* Array display */}
+        <div>
+          <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+            Array
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {nums.map((num, i) => {
+              const isActive = currentState.currentIndex === i;
+              const isFound = currentState.found?.includes(i);
+              let bg = "#1e293b";
+              if (isFound) bg = "#166534";
+              else if (isActive) bg = "#1e40af";
 
-            return (
-              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                <div style={{ fontSize: 11, color: "#64748b" }}>i={i}</div>
-                <div
-                  style={{
-                    width: 56,
-                    height: 56,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: bg,
-                    borderRadius: 8,
-                    fontSize: 20,
-                    fontWeight: 700,
-                    color: "#f8fafc",
-                    border: isActive ? "2px solid #3b82f6" : isFound ? "2px solid #22c55e" : "2px solid #334155",
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  {num}
+              return (
+                <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                  <div style={{ fontSize: 11, color: "#64748b" }}>i={i}</div>
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: bg,
+                      borderRadius: 8,
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: "#f8fafc",
+                      border: isActive ? "2px solid #3b82f6" : isFound ? "2px solid #22c55e" : "2px solid #334155",
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    {num}
+                  </div>
+                  {isActive && !isFound && <div style={{ fontSize: 18 }}>^</div>}
+                  {isFound && <div style={{ fontSize: 14, color: "#22c55e" }}>found</div>}
                 </div>
-                {isActive && !isFound && <div style={{ fontSize: 18 }}>^</div>}
-                {isFound && <div style={{ fontSize: 14, color: "#22c55e" }}>found</div>}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      {/* Hash Map */}
-      <div>
-        <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
-          Hash Map
+        {/* Hash Map */}
+        <div>
+          <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1 }}>
+            Hash Map
+          </div>
+          <div
+            style={{
+              background: "#0f172a",
+              borderRadius: 8,
+              border: "1px solid #334155",
+              padding: 16,
+              minHeight: 60,
+            }}
+          >
+            {Object.keys(currentState.hashMap).length === 0 ? (
+              <div style={{ color: "#475569", fontStyle: "italic" }}>Empty</div>
+            ) : (
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {Object.entries(currentState.hashMap).map(([key, idx]) => (
+                  <div
+                    key={key}
+                    style={{
+                      background: "#1e293b",
+                      borderRadius: 6,
+                      padding: "8px 14px",
+                      border:
+                        currentState.checking === Number(key) && currentState.found
+                          ? "1px solid #22c55e"
+                          : "1px solid #334155",
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    <span style={{ color: "#f1fa8c" }}>{key}</span>
+                    <span style={{ color: "#475569", margin: "0 6px" }}>&rarr;</span>
+                    <span style={{ color: "#8be9fd" }}>idx {idx}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Current step message */}
         <div
           style={{
-            background: "#0f172a",
+            background: currentState.found ? "#052e16" : "#0c1222",
+            border: currentState.found ? "1px solid #166534" : "1px solid #1e293b",
             borderRadius: 8,
-            border: "1px solid #334155",
-            padding: 16,
-            minHeight: 60,
+            padding: "12px 16px",
+            color: currentState.found ? "#4ade80" : "#cbd5e1",
+            fontSize: 14,
+            lineHeight: 1.5,
+            transition: "all 0.3s ease",
           }}
         >
-          {Object.keys(currentState.hashMap).length === 0 ? (
-            <div style={{ color: "#475569", fontStyle: "italic" }}>Empty</div>
-          ) : (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {Object.entries(currentState.hashMap).map(([key, idx]) => (
-                <div
-                  key={key}
-                  style={{
-                    background: "#1e293b",
-                    borderRadius: 6,
-                    padding: "8px 14px",
-                    border: currentState.checking === Number(key) && currentState.found
-                      ? "1px solid #22c55e"
-                      : "1px solid #334155",
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  <span style={{ color: "#f1fa8c" }}>{key}</span>
-                  <span style={{ color: "#475569", margin: "0 6px" }}>&rarr;</span>
-                  <span style={{ color: "#8be9fd" }}>idx {idx}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          {currentState.message}
         </div>
       </div>
-
-      {/* Message */}
-      <div
-        style={{
-          background: currentState.found ? "#052e16" : "#0c1222",
-          border: currentState.found ? "1px solid #166534" : "1px solid #1e293b",
-          borderRadius: 8,
-          padding: "12px 16px",
-          color: currentState.found ? "#4ade80" : "#cbd5e1",
-          fontSize: 14,
-          lineHeight: 1.5,
-          transition: "all 0.3s ease",
-        }}
-      >
-        {currentState.message}
-      </div>
-
-      {/* Controls */}
-      <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-        <button
-          onClick={stepForward}
-          disabled={isDone || isRunning}
-          style={{
-            padding: "10px 24px",
-            background: isDone || isRunning ? "#334155" : "#3b82f6",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: isDone || isRunning ? "not-allowed" : "pointer",
-            fontWeight: 600,
-            fontSize: 14,
-          }}
-        >
-          Step
-        </button>
-        <button
-          onClick={play}
-          disabled={isDone || isRunning}
-          style={{
-            padding: "10px 24px",
-            background: isDone || isRunning ? "#334155" : "#8b5cf6",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: isDone || isRunning ? "not-allowed" : "pointer",
-            fontWeight: 600,
-            fontSize: 14,
-          }}
-        >
-          {isRunning ? "Playing..." : "Play"}
-        </button>
-        <button
-          onClick={reset}
-          style={{
-            padding: "10px 24px",
-            background: "#1e293b",
-            color: "#94a3b8",
-            border: "1px solid #334155",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: 14,
-          }}
-        >
-          Reset
-        </button>
-      </div>
-    </div>
+    </VisualizationLayout>
   );
 }

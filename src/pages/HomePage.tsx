@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { problems } from "../problems/registry";
+import binLogo from "../assets/bin.svg";
 
 const PAGE_SIZE = 10;
 
@@ -11,9 +12,27 @@ const difficultyColor: Record<string, string> = {
 };
 
 export default function HomePage() {
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(0);
-  const [vizOnly, setVizOnly] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("q") ?? "";
+  const page = Number(searchParams.get("page") ?? "0");
+  const vizOnly = searchParams.get("viz") === "1";
+
+  const updateParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(updates)) {
+          if (value === null || value === "" || value === "0") {
+            next.delete(key);
+          } else {
+            next.set(key, value);
+          }
+        }
+        return next;
+      }, { replace: true });
+    },
+    [setSearchParams],
+  );
 
   const filtered = useMemo(() => {
     let result = problems;
@@ -33,8 +52,7 @@ export default function HomePage() {
   const pageProblems = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const handleSearch = (value: string) => {
-    setSearch(value);
-    setPage(0);
+    updateParams({ q: value, page: null });
   };
 
   return (
@@ -50,47 +68,53 @@ export default function HomePage() {
           position: "absolute",
           top: 20,
           right: 24,
-          padding: "8px 16px",
-          background: "#1e293b",
-          color: "#3b82f6",
-          border: "1px solid #2a3a4e",
-          borderRadius: 8,
+          padding: "6px 14px",
+          background: "#252525",
+          color: "#a0a0a0",
+          border: "1px solid #333",
+          borderRadius: 6,
           textDecoration: "none",
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: 600,
           transition: "background 0.15s",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "#253347")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "#1e293b")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "#303030")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "#252525")}
       >
         Contribute a Solution?
       </a>
 
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "60px 24px" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "48px 24px" }}>
         {/* Header */}
-        <h1
+        <div
           style={{
-            textAlign: "center",
-            fontSize: 36,
-            fontWeight: 800,
-            marginBottom: 8,
-            letterSpacing: -1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            marginBottom: 32,
           }}
         >
-          <span style={{ color: "#3b82f6" }}>Inter</span>
-          <span style={{ color: "#e2e8f0" }}>leet</span>
-        </h1>
+          <img
+            src={binLogo}
+            alt="Interleet"
+            style={{ width: 40, height: 40, position: "relative", top: 6 }}
+          />
+          <span style={{ fontSize: 25, fontWeight: 700, letterSpacing: -0.5 }}>
+            Interleet
+          </span>
+        </div>
         <p
           style={{
             textAlign: "center",
-            color: "#64748b",
-            fontSize: 16,
-            marginBottom: 40,
+            color: "#475569",
+            fontSize: 14,
+            marginTop: -24,
+            marginBottom: 32,
           }}
         >
-          Visualize Leetcode Solutions
+          interactive leetcode solutions
         </p>
-
         {/* Search */}
         <input
           type="text"
@@ -100,8 +124,8 @@ export default function HomePage() {
           style={{
             width: "100%",
             padding: "14px 20px",
-            background: "#111",
-            border: "1px solid #2a2a2a",
+            background: "#1a1a1a",
+            border: "1px solid #303030",
             borderRadius: 10,
             color: "#e2e8f0",
             fontSize: 16,
@@ -122,8 +146,7 @@ export default function HomePage() {
         >
           <button
             onClick={() => {
-              setVizOnly((v) => !v);
-              setPage(0);
+              updateParams({ viz: vizOnly ? null : "1", page: null });
             }}
             style={{
               position: "relative",
@@ -131,7 +154,7 @@ export default function HomePage() {
               height: 22,
               borderRadius: 11,
               border: "none",
-              background: vizOnly ? "#3b82f6" : "#2a2a2a",
+              background: vizOnly ? "#666" : "#333",
               cursor: "pointer",
               transition: "background 0.2s",
               padding: 0,
@@ -172,17 +195,17 @@ export default function HomePage() {
                   alignItems: "center",
                   gap: 16,
                   padding: "14px 20px",
-                  background: "#111",
+                  background: "#1a1a1a",
                   borderRadius: 8,
                   textDecoration: "none",
                   color: "#e2e8f0",
                   transition: "background 0.15s",
                 }}
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "#1a1a2e")
+                  (e.currentTarget.style.background = "#252525")
                 }
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "#111")
+                  (e.currentTarget.style.background = "#1a1a1a")
                 }
               >
                 <span
@@ -211,8 +234,8 @@ export default function HomePage() {
                   <span
                     style={{
                       fontSize: 11,
-                      background: "#1e293b",
-                      color: "#3b82f6",
+                      background: "#2a2a2a",
+                      color: "#a0a0a0",
                       padding: "3px 8px",
                       borderRadius: 4,
                       fontWeight: 600,
@@ -240,11 +263,11 @@ export default function HomePage() {
           >
             <button
               disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
+              onClick={() => updateParams({ page: String(page - 1) })}
               style={{
                 padding: "8px 16px",
-                background: page === 0 ? "#1a1a1a" : "#1e293b",
-                color: page === 0 ? "#333" : "#94a3b8",
+                background: page === 0 ? "#1a1a1a" : "#252525",
+                color: page === 0 ? "#444" : "#999",
                 border: "none",
                 borderRadius: 6,
                 cursor: page === 0 ? "not-allowed" : "pointer",
@@ -258,11 +281,11 @@ export default function HomePage() {
             </span>
             <button
               disabled={page >= totalPages - 1}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => updateParams({ page: String(page + 1) })}
               style={{
                 padding: "8px 16px",
-                background: page >= totalPages - 1 ? "#1a1a1a" : "#1e293b",
-                color: page >= totalPages - 1 ? "#333" : "#94a3b8",
+                background: page >= totalPages - 1 ? "#1a1a1a" : "#252525",
+                color: page >= totalPages - 1 ? "#444" : "#999",
                 border: "none",
                 borderRadius: 6,
                 cursor: page >= totalPages - 1 ? "not-allowed" : "pointer",

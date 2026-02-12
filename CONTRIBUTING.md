@@ -6,11 +6,11 @@ Thanks for helping visualize Leetcode solutions! Here's how to add one.
 
 1. **Fork & clone** the repo, then `npm install`.
 
-2. **Add the problem description** as a markdown file at:
+2. **Add the problem description** as a markdown file in its own folder:
    ```
-   src/assets/problems/problem_XX.md
+   src/assets/problems/problem_XX/problem.md
    ```
-   where `XX` is the Leetcode problem number (e.g. `problem_1.md`).
+   where `XX` is the Leetcode problem number (e.g. `problem_1/problem.md`).
 
 3. **Create a visualization component** at:
    ```
