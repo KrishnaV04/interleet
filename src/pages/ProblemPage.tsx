@@ -12,7 +12,10 @@ const imageModules = import.meta.glob<string>(
 // Map of problem IDs to their visualization components (lazy loaded)
 const visualizations: Record<number, ReturnType<typeof lazy>> = {
   1: lazy(() => import("../problems/TwoSumVisualization")),
+  3: lazy(() => import("../problems/LongestSubstringVisualization")),
+  5: lazy(() => import("../problems/LongestPalindromicSubstringVisualization")),
   9: lazy(() => import("../problems/PalindromeNumberVisualization")),
+  11: lazy(() => import("../problems/ContainerWithMostWaterVisualization")),
   13: lazy(() => import("../problems/RomanToIntegerVisualization")),
   14: lazy(() => import("../problems/LongestCommonPrefixVisualization")),
   20: lazy(() => import("../problems/ValidParenthesesVisualization")),
@@ -21,6 +24,8 @@ const visualizations: Record<number, ReturnType<typeof lazy>> = {
   27: lazy(() => import("../problems/RemoveElementVisualization")),
   28: lazy(() => import("../problems/FirstOccurrenceVisualization")),
   35: lazy(() => import("../problems/SearchInsertPositionVisualization")),
+  48: lazy(() => import("../problems/RotateImageVisualization")),
+  49: lazy(() => import("../problems/GroupAnagramsVisualization")),
 };
 
 export default function ProblemPage() {
